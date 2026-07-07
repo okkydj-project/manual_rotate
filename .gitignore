@@ -42,3 +42,8 @@ Thumbs.db
 
 # Python cache directories anywhere in the project
 **/__pycache__/
+
+# Development-only files
+instruction.md
+session-*.md
+AGENTS.md

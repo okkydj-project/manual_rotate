@@ -1,8 +1,34 @@
 # Screen Rotate
 
-A lightweight native desktop application for manually rotating the display on Ubuntu 26.04 with GNOME 50 and Wayland.
+A lightweight native desktop application for manually rotating the built-in display on **Ubuntu 26.04**, **GNOME 50**, and **Wayland**.
 
-Replaces the broken GNOME auto-rotation feature with a reliable manual solution.
+When GNOME's automatic screen rotation fails or is unavailable, Screen Rotate provides a simple and reliable manual alternative.
+
+---
+
+## Features
+
+- 🖥️ Native PySide6 desktop application
+- 🔄 Rotate the display with a single click
+- 📱 Supports all four orientations
+  - Landscape
+  - Portrait Left
+  - Portrait Right
+  - Upside Down
+- 🎯 Automatically detects the built-in display
+- 💾 Preserves current resolution and display scale
+- ⚡ Uses GNOME's official D-Bus DisplayConfig API
+- 🚫 No `xrandr`, `wlr-randr`, or X11 dependencies
+
+---
+
+## Screenshots
+
+### Main Window
+
+![Main Window](screenshots/main_window.png)
+
+---
 
 ## Requirements
 
@@ -13,6 +39,8 @@ Replaces the broken GNOME auto-rotation feature with a reliable manual solution.
 - PySide6
 - dbus-python
 
+---
+
 ## Installation
 
 ### Quick Install
@@ -22,110 +50,165 @@ chmod +x install.sh
 ./install.sh
 ```
 
-### Manual Install
+### Manual Installation
+
+Install the required packages:
 
 ```bash
 pip3 install --user PySide6 dbus-python
+```
+
+Run the application:
+
+```bash
 python3 -m screen_rotate.main
 ```
 
-### From apt (if available)
+### Ubuntu Packages
 
 ```bash
-sudo apt install python3-pyside6.qtcore python3-pyside6.qtgui python3-pyside6.qtwidgets python3-dbus
+sudo apt install \
+python3-pyside6.qtcore \
+python3-pyside6.qtgui \
+python3-pyside6.qtwidgets \
+python3-dbus
 ```
+
+---
 
 ## Usage
 
-1. Launch from Activities menu: search for "Screen Rotate"
-2. Or run from terminal: `screen-rotate`
-3. Click one of four rotation buttons:
-   - **Landscape** - Normal orientation (0°)
-   - **Portrait Left** - Rotated 90° counter-clockwise
-   - **Portrait Right** - Rotated 90° clockwise
-   - **Upside Down** - Rotated 180°
+Launch the application from
 
-The current display info (monitor name, resolution, scale, orientation) is shown at the top.
+- Activities → **Screen Rotate**
+
+or
+
+```bash
+screen-rotate
+```
+
+Choose one of the four orientations.
+
+The application displays:
+
+- Current monitor
+- Resolution
+- Scale
+- Active orientation
+
+The current orientation button is automatically highlighted and disabled.
+
+---
+
+## Project Structure
+
+```
+manual_rotate/
+│
+├── screen_rotate/
+│   ├── main.py
+│   ├── gui.py
+│   ├── display.py
+│   ├── monitor.py
+│   ├── dbus.py
+│   └── icons/
+│
+├── screenshots/
+├── install.sh
+├── uninstall.sh
+├── requirements.txt
+├── README.md
+├── LICENSE.md
+└── AGENTS.md
+```
+
+---
 
 ## Architecture
 
+The application communicates directly with GNOME Mutter using the official D-Bus interface:
+
+- `GetCurrentState`
+- `ApplyMonitorsConfig`
+
+Workflow:
+
+1. Discover the built-in display
+2. Read the current monitor configuration
+3. Preserve resolution and scaling
+4. Apply only the requested rotation
+5. Refresh the UI
+
+---
+
+## Troubleshooting
+
+### Rotation does not work
+
+Verify that you are using Wayland:
+
+```bash
+echo $XDG_SESSION_TYPE
 ```
-screen_rotate/
-├── main.py          # Entry point
-├── gui.py           # PySide6 GUI
-├── display.py       # High-level display control
-├── monitor.py       # Monitor discovery and data models
-├── dbus.py          # D-Bus wrapper for Mutter DisplayConfig
-└── icons/           # SVG icons for rotation buttons
+
+Expected output:
+
+```
+wayland
 ```
 
-### D-Bus Interface
+---
 
-Uses the official `org.gnome.Mutter.DisplayConfig` D-Bus API:
+### No built-in display detected
 
-- `GetCurrentState` - Reads current monitor configuration
-- `ApplyMonitorsConfig` - Applies rotation changes
+Inspect the DisplayConfig interface:
 
-No xrandr, wlr-randr, swaymsg, or X11 APIs are used.
+```bash
+busctl introspect \
+org.gnome.Mutter.DisplayConfig \
+/org/gnome/Mutter/DisplayConfig
+```
 
-## How It Works
+---
 
-1. On startup, reads the current display state via D-Bus
-2. Discovers the built-in display dynamically (no hardcoded connector names)
-3. Shows current resolution, scale, and orientation
-4. When a rotation button is clicked, applies the new configuration via `ApplyMonitorsConfig`
-5. The active orientation button is highlighted and disabled to prevent redundant clicks
+### Display configuration is rejected
 
-## Error Handling
+Some desktop environments may restrict monitor configuration changes.
 
-- If the display configuration changes while the app is open, click a button to rediscover
-- If Mutter rejects a rotation request, a clear error message is displayed
-- The application does not crash on errors
+Verify that `ApplyMonitorsConfigAllowed` is enabled.
 
-## Uninstallation
+---
+
+## Known Limitations
+
+- Only rotates the built-in display
+- External monitors are not rotated
+- Wayland only
+- GNOME Mutter DisplayConfig API required
+
+---
+
+## Uninstall
 
 ```bash
 chmod +x uninstall.sh
 ./uninstall.sh
 ```
 
-This removes:
-- Application files from `~/.local/share/screen-rotate/`
-- Launcher from `~/.local/share/applications/`
-- Icon from `~/.local/share/icons/`
-- Binary from `~/.local/bin/screen-rotate`
+The uninstall script removes:
 
-Python packages (PySide6, dbus-python) are not removed as other applications may depend on them.
+- Application files
+- Desktop launcher
+- Icons
+- Command-line launcher
 
-## Troubleshooting
+Installed Python packages are left untouched.
 
-### "No built-in display detected"
-
-The application looks for a monitor with `is-builtin=true` property. If your internal display is not detected, check:
-
-```bash
-busctl introspect org.gnome.Mutter.DisplayConfig /org/gnome/Mutter/DisplayConfig
-```
-
-### "ApplyMonitorsConfig not allowed"
-
-Some systems may restrict display configuration changes. Check the `ApplyMonitorsConfigAllowed` property.
-
-### Rotation doesn't apply
-
-Ensure you are running under Wayland, not X11. Check with:
-
-```bash
-echo $XDG_SESSION_TYPE
-```
-
-## Known Limitations
-
-- Only rotates the primary/built-in display
-- External monitors are discovered but not rotated
-- Scale and resolution are preserved from current settings
-- Requires Wayland (does not work on X11)
+---
 
 ## License
 
-MIT
+This project is licensed under the MIT License.
+
+See the [LICENSE](LICENSE) file for details.
